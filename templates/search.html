@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="cs" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hrajty 🔍</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f8f9fa; }
+    [data-theme="dark"] body { background: #1a202c; color: #cbd5e0; }
+    .search-box { max-width: 600px; }
+    .search-box:focus-within { @apply ring-4 ring-blue-300 border-blue-500; }
+    #suggestions { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; max-height:200px; overflow-y:auto; z-index:10; }
+    [data-theme="dark"] #suggestions { background: #2d3748; color: white; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen transition-colors duration-300">
+
+  <!-- Top bar s přepínačem -->
+  <nav class="w-full flex justify-end p-4">
+    <button id="theme-toggle" class="px-3 py-1 bg-gray-300 dark:bg-gray-700 rounded">
+      🌙 Přepnout režim
+    </button>
+  </nav>
+
+  <main class="flex-grow flex flex-col items-center justify-center px-4 py-6">
+
+    <!-- Logo s Beta a klikáním -->
+    <a href="/" class="flex flex-col items-center gap-1 mb-6 group transition transform hover:scale-105">
+      <div class="text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent relative group-hover:opacity-90 animate-pulse">
+        Hrajty
+        <span class="absolute -top-1.5 -right-1.5 text-xs bg-yellow-400 text-black px-1 rounded-md font-normal">
+          Beta
+        </span>
+      </div>
+      <p class="text-gray-500 dark:text-gray-400 text-sm group-hover:text-gray-700 transition">Rychlé a přesné výsledky</p>
+    </a>
+
+    <!-- Vyhledávací formulář -->
+    <div class="relative w-full search-box mb-4">
+      <form id="search-form" class="flex items-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm"
+            method="get" action="/" autocomplete="off" onsubmit="startLoading()">
+        <svg class="w-6 h-6 text-gray-400 mx-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input id="search-input" name="q" type="text"
+               value="{{ query }}" placeholder="Vyhledávej na Hrajty…"
+               class="flex-grow py-3 pr-4 text-lg rounded-full bg-transparent focus:outline-none text-gray-800 dark:text-white" />
+        <button id="search-button" type="submit" class="ml-4 mr-2 px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition">
+          Hledat
+        </button>
+      </form>
+      <div id="suggestions"></div>
+    </div>
+
+    <!-- Statistiky pod vyhledávačem -->
+    {% if not query %}
+    <div class="text-center text-gray-600 dark:text-gray-400 mb-6 space-y-1">
+      <p>📦 Registrovaných stránek: <strong>{{ registered_pages }}</strong></p>
+      <p>📄 Registrovaných karet: <strong>{{ registered_cards }}</strong></p>
+    </div>
+    {% endif %}
+    </div>
+
+    {% if not query %}
+      <!-- Homepage tlačítka -->
+      <div class="mt-4 flex space-x-4">
+        <button onclick="document.getElementById('search-form').submit()" class="btn-secondary hover:bg-gray-100 dark:hover:bg-gray-600 transition">Hrajty vyhledávání</button>
+        <a href="/lucky" class="btn-secondary hover:bg-gray-100 dark:hover:bg-gray-600 transition">Zkusím štěstí</a>
+      </div>
+    {% else %}
+      <!-- Výsledky hledání -->
+      <div class="w-full max-w-3xl space-y-6 mt-8">
+        {% for r in results %}
+          <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow hover:shadow-md transition">
+            <a href="{{ r.url }}" target="_blank" class="text-2xl font-semibold text-blue-600 hover:underline">{{ r.title }}</a>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">{{ r.snippet|safe }}...</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Stránkování -->
+      <div class="mt-8 flex justify-center space-x-4">
+        {% if page > 1 %}
+          <a href="/?q={{ query | urlencode }}&page={{ page-1 }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">« Předchozí</a>
+        {% endif %}
+        {% if page * per_page < total %}
+          <a href="/?q={{ query | urlencode }}&page={{ page+1 }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Další »</a>
+        {% endif %}
+      </div>
+
+      <!-- Zkusím štěstí když mám dotaz -->
+      <div class="mt-6">
+        <a href="/lucky?q={{ query | urlencode }}" class="btn-secondary hover:bg-gray-100 dark:hover:bg-gray-600 transition">Zkusím štěstí pro „{{ query }}“</a>
+      </div>
+    {% endif %}
+
+  </main>
+
+  <footer class="bg-white dark:bg-gray-800 text-center py-4 text-gray-500 dark:text-gray-400 border-t dark:border-gray-700">
+    © 2025 Hrajty – Váš vyhledávač • O nás • Kontakt • Ochrana soukromí
+  </footer>
+
+  <script>
+    // Autocomplete
+    const input = document.getElementById('search-input');
+    const sugg = document.getElementById('suggestions');
+    input.addEventListener('input', async () => {
+      const q = input.value;
+      sugg.innerHTML = '';
+      if (!q) return;
+      const res = await fetch(`/suggest?q=${encodeURIComponent(q)}`);
+      const arr = await res.json();
+      sugg.innerHTML = arr.map(s =>
+        `<div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="select('${s}')">${s}</div>`
+      ).join('');
+    });
+    function select(v){ input.value=v; sugg.innerHTML=''; input.form.submit(); }
+
+    // Theme Toggle + paměť
+    const root = document.documentElement;
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (localStorage.getItem('theme') === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+    }
+    toggleBtn.addEventListener('click', () => {
+      if (root.getAttribute('data-theme') === 'dark') {
+        root.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      }
+    });
+
+    // Loading Spinner místo tlačítka
+    function startLoading() {
+  const btn = document.getElementById('search-button');
+  btn.disabled = true;
+  btn.innerHTML = `
+    <div class="flex items-center justify-center space-x-2">
+      <div class="w-4 h-4 rounded-full animate-ping bg-blue-400"></div>
+      <div class="w-4 h-4 rounded-full animate-ping bg-purple-400"></div>
+      <div class="w-4 h-4 rounded-full animate-ping bg-pink-400"></div>
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>

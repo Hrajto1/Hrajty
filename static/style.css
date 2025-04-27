@@ -1,0 +1,40 @@
+/* větší kontejner */
+.container {
+  max-width: 900px;
+}
+
+/* návrhy pod vyhledávacím polem */
+#suggestions {
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1050;
+}
+
+/* snippet text */
+.snippet {
+  color: #555;
+  font-size: 0.95rem;
+}
+
+/* karta */
+.card {
+  transition: transform 0.1s ease;
+}
+.card:hover {
+  transform: translateY(-5px);
+}
+
+/* navbar brand */
+.navbar-brand {
+  font-weight: bold;
+}
+
+/* alert styling */
+.alert-warning {
+  font-size: 1.1rem;
+}
+
+/* footer */
+footer {
+  font-size: 0.9rem;
+}
