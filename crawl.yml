@@ -1,0 +1,30 @@
+# .github/workflows/crawl.yml
+
+name: Scheduled Crawl
+
+# Spouštět automaticky podle cron výrazu a také umožnit ruční spuštění
+on:
+  schedule:
+    - cron: "*/5 * * * *"    # každých 5 minut
+  workflow_dispatch:         # tlačítko “Run workflow” v Actions
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python crawler.py
