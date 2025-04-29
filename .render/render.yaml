@@ -1,0 +1,10 @@
+services:
+  - type: cron
+    name: Hrajty
+    env: python
+    schedule: "@hourly"  # nebo třeba: "0 */3 * * *" pro každé 3 hodiny
+    buildCommand: pip install -r requirements.txt
+    startCommand: python crawler.py
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # nastavíš ji pak ručně v Renderu
